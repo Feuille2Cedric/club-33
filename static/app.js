@@ -86,7 +86,7 @@ function render() {
   $('#my-proposal-status').textContent = hasProposal ? 'Ton album est sur la platine.' : 'Un disque qui mérite d’être partagé.';
   if (!historyPage) {
     $('#albums').innerHTML = state.albums.map(renderAlbum).join('');
-    if (!hasProposal) $('#albums').insertAdjacentHTML('beforeend', `<div class="empty-card"><img src="./favicon.svg" alt=""><h2>Et toi, tu nous fais<br>écouter quoi ?</h2><p>Un coup de cœur, un classique ou une découverte. La prochaine piste est à toi.</p><button data-add-album>＋ Proposer mon album</button></div>`);
+    if (!hasProposal) $('#albums').insertAdjacentHTML('beforeend', `<div class="empty-card"><img src="./favicon.svg" alt=""><h2>Et toi, tu nous fais<br>écouter quoi ?</h2><p>Un coup de cœur, un classique ou une découverte. La prochaine piste est à toi.</p><button data-add-album>+ Proposer mon album</button></div>`);
   } else { renderHistory(); loadPreviews(); }
 }
 
