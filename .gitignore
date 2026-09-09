@@ -1,5 +1,7 @@
 __pycache__/
 .edge-smoke/
+test-artifacts/
+node_modules/
 supabase-import.sql
 .env
 .env.*

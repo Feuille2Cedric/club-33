@@ -8,6 +8,7 @@ async function clubApi(path, body, signal) {
     else if(url.pathname==='/api/member'){endpoint='club_members';payload={name:body.name.trim()};}
     else if(url.pathname==='/api/album'){endpoint='club_albums';}
     else if(url.pathname==='/api/rating'){endpoint='rpc/club_rate';payload={selected_album:body.album_id,selected_member:body.member_id,new_score:body.score};}
+    else if(url.pathname==='/api/album/delete'){endpoint='rpc/club_delete_album';payload={selected_album:body.album_id,selected_member:body.member_id};}
     else throw new Error('Action inconnue.');
     const headers={apikey:config.supabaseKey,'Content-Type':'application/json',Prefer:prefer};
     // Legacy anon JWTs require a Bearer header; publishable keys do not.
@@ -16,7 +17,7 @@ async function clubApi(path, body, signal) {
     const text=await response.text();let data;try{data=text?JSON.parse(text):{};}catch{throw new Error('Réponse inattendue de Supabase.');}
     if(!response.ok){
       if(data.code==='23505')throw new Error(url.pathname==='/api/member'?'Ce prénom existe déjà.':'Tu as déjà proposé un album cette semaine.');
-      if(['PGRST202','42P01','PGRST205'].includes(data.code))throw new Error('La base doit être initialisée avec le script SQL du guide Supabase.');
+      if(['PGRST202','42P01','PGRST205'].includes(data.code))throw new Error(url.pathname==='/api/album/delete'?'La suppression nécessite la mise à jour SQL disponible dans le guide Supabase.':'La base doit être initialisée avec le script SQL du guide Supabase.');
       throw new Error(data.message||'La base partagée ne répond pas.');
     }
     return data;
@@ -41,7 +42,7 @@ function deezerSearch(query,signal){
     function abort(){clean();reject(new DOMException('Annulé','AbortError'));}
     window[callback]=data=>{
       clean();if(data.error){reject(new Error('Deezer est indisponible. Réessaie ou utilise la saisie manuelle.'));return;}
-      const result={results:(data.data||[]).filter(a=>a.title&&a.artist?.name).map(a=>({title:a.title,artist:a.artist.name,cover_url:a.cover_big||a.cover_medium||'',link:a.link||'',deezer_url:a.link||'',spotify_url:'',source:'Deezer'}))};
+      const result={results:(data.data||[]).filter(a=>a.title&&a.artist?.name).map(a=>({title:a.title,artist:a.artist.name,cover_url:a.cover_xl||a.cover_big||a.cover_medium||'',link:a.link||'',deezer_url:a.link||'',spotify_url:'',source:'Deezer'}))};
       if(deezerCache.size>100)deezerCache.clear();deezerCache.set(query,{time:Date.now(),data:result});resolve(result);
     };
     script.onerror=()=>{clean();reject(new Error('Recherche Deezer indisponible. Vérifie ta connexion ou utilise la saisie manuelle.'));};

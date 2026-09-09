@@ -44,15 +44,23 @@ Ces deux valeurs sont publiques : elles vont dans **Variables**, pas **Secrets**
 3. Donner une note, puis vérifier sa présence sur le premier appareil après dix secondes.
 4. Ajouter une personne et vérifier qu’elle apparaît sur l’écran de choix des profils.
 
+## Mise à jour : suppression des propositions
+
+Si les tables existaient déjà avant cette version, ouvrir **SQL Editor** et exécuter [la migration de suppression](supabase/migrations/20260909_album_delete.sql). Elle ajoute une fonction sans effacer les données existantes. Une installation neuve avec le dernier `schema.sql` inclut déjà cette fonction.
+
+Le bouton « Retirer » apparaît sur les albums du profil sélectionné. Une confirmation affiche le titre avant suppression. La fonction vérifie que la proposition appartient au profil transmis, puis retire l’album et ses notes ensemble. Les notes des autres albums restent inchangées. Les profils restent libres tant que l’authentification n’est pas en place.
+
+Les notes sont enregistrées séparément pour chaque couple album/personne. Changer la note de Cédric ne remplace jamais celle de Côme ou Issa. Le profil choisi est conservé dans l’onglet pour naviguer entre la sélection et `history.html` ; il peut être changé depuis l’en-tête.
+
 ## Ce qui est volontairement ouvert pour le moment
 
-Il n’y a pas encore d’authentification, comme demandé : toute personne ayant accès au site peut choisir un profil, ajouter une personne ou un album et modifier une note. Les suppressions ne sont pas autorisées au navigateur. Cette version ne protège pas les profils contre l’usurpation ; il faudra ajouter Supabase Auth avant d’exiger des mots de passe.
+Il n’y a pas encore d’authentification, comme demandé : toute personne ayant accès au site peut choisir un profil, ajouter une personne ou un album et modifier la note de ce profil. Les suppressions directes de tables sont interdites ; seule la fonction dédiée peut retirer une proposition du profil transmis. Cette version ne protège pas les profils contre l’usurpation ; il faudra ajouter Supabase Auth avant d’exiger des mots de passe.
 
 Les mots de passe des participants ne doivent pas être récupérés depuis GitHub Secrets par le navigateur. Supabase Auth pourra gérer leur vérification sans les publier dans le code du site.
 
 ## Recherche et écoute
 
-La recherche utilise l’API publique Deezer directement depuis le navigateur, avec pochettes et lien direct vers l’album. Le bouton Spotify ouvre une recherche sur le titre et l’artiste ; il ne prétend pas être un lien exact d’album. Cela ne nécessite aucun compte développeur Spotify. Une intégration de recherche Spotify complète demanderait une application Spotify et un service côté serveur pour ses identifiants.
+La recherche utilise l’API publique Deezer directement depuis le navigateur, avec pochettes en 1000 × 1000 lorsqu’elles sont disponibles et lien direct vers l’album. Les anciennes URL Deezer de moindre résolution sont également affichées en HD, avec repli sur leur image d’origine en cas d’échec. Le bouton Spotify ouvre une recherche sur le titre et l’artiste ; il ne prétend pas être un lien exact d’album. Cela ne nécessite aucun compte développeur Spotify. Une intégration de recherche Spotify complète demanderait une application Spotify et un service côté serveur pour ses identifiants.
 
 ## Données déjà saisies en local
 

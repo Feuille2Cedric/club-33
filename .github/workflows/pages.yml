@@ -47,6 +47,13 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright
           node scripts/browser-test.cjs
+      - name: Save UI previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-previews
+          path: test-artifacts/
+          if-no-files-found: ignore
       - name: Generate public configuration
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}

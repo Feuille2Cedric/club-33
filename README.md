@@ -1,6 +1,6 @@
 # Club 33
 
-Un album par personne et par semaine, des notes sur 10 et un historique. À l’arrivée, chacun choisit son profil. Cédric, Côme et Issa sont présents au départ ; le bouton « Ajouter une personne » agrandit le club.
+Un album par personne et par semaine, des notes indépendantes sur 10 et une page d’historique. Chacun choisit son profil, conservé dans son onglet pendant la navigation. Cédric, Côme et Issa sont présents au départ ; le bouton « Ajouter une personne » agrandit le club.
 
 Site : https://feuille2cedric.github.io/club-33/
 
@@ -8,7 +8,9 @@ Site : https://feuille2cedric.github.io/club-33/
 
 Suivre [le guide Supabase](SUPABASE.md). Le site est sur GitHub Pages et la base sur le plan gratuit Supabase. Tant que le projet Supabase n’est pas configuré, le site affiche un message de configuration et ne permet pas d’ajouter des données.
 
-La recherche Deezer remplit le titre, l’artiste, la pochette et le lien d’album. Le second bouton ouvre une recherche Spotify. Aucun compte développeur n’est nécessaire. La lecture complète se fait sur la plateforme choisie.
+La recherche Deezer remplit le titre, l’artiste, la pochette HD et le lien d’album. Le second bouton ouvre une recherche Spotify. Aucun compte développeur n’est nécessaire. La lecture complète se fait sur la plateforme choisie.
+
+Chaque personne note séparément chaque album et peut retirer ses propres propositions depuis le profil sélectionné. La suppression demande confirmation et retire les notes liées à cet album. Les projets Supabase existants doivent exécuter [la migration](supabase/migrations/20260909_album_delete.sql) une fois pour activer la suppression.
 
 Il n’y a pas encore de mots de passe : les profils sont libres. Les clés d’administration, mots de passe et bases locales ne sont jamais publiés sur Pages.
 

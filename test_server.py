@@ -88,6 +88,21 @@ class ClubTests(unittest.TestCase):
         album = self.call('/api/week?week=2026-09-07')[1]['albums'][0]
         self.assertEqual(self.call('/api/rating', dict(member_id=member, album_id=album['id'], score=8))[0], 200)
 
+    def test_independent_ratings_and_owner_deletion(self):
+        self.call('/api/album', dict(member_id=1, week='2026-09-07', title='Shared album', artist='Artist'))
+        album_id = self.call('/api/week?week=2026-09-07')[1]['albums'][0]['id']
+        for member, score in [(1, 8), (2, 3), (1, 0)]:
+            self.assertEqual(self.call('/api/rating', dict(member_id=member, album_id=album_id, score=score))[0], 200)
+        ratings = self.call('/api/week?week=2026-09-07')[1]['albums'][0]['ratings']
+        self.assertEqual({r['member_id']: r['score'] for r in ratings}, {1: 0, 2: 3})
+        self.assertEqual(self.call('/api/album/delete', dict(member_id=2, album_id=album_id))[0], 403)
+        self.assertEqual(len(self.call('/api/week?week=2026-09-07')[1]['albums']), 1)
+        self.assertEqual(self.call('/api/album/delete', dict(member_id=1, album_id=album_id))[0], 200)
+        self.assertEqual(self.call('/api/week?week=2026-09-07')[1]['albums'], [])
+        with server.connect() as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM ratings').fetchone()[0], 0)
+        self.assertEqual(self.call('/api/album', dict(member_id=1, week='2026-09-07', title='Replacement', artist='Artist'))[0], 200)
+
     def test_old_database_migration_preserves_data(self):
         legacy = Path(self.temp.name) / 'legacy.sqlite3'
         with sqlite3.connect(str(legacy)) as db:

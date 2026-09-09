@@ -29,7 +29,7 @@ def search_albums(query):
     if 'error' in data:
         raise ValueError('Deezer indisponible')
     results = [{'title': row['title'], 'artist': row['artist']['name'],
-                'cover_url': row.get('cover_big') or row.get('cover_medium', ''),
+                'cover_url': row.get('cover_xl') or row.get('cover_big') or row.get('cover_medium', ''),
                 'link': row.get('link', ''), 'deezer_url': row.get('link', ''),
                 'spotify_url': '', 'source': 'Deezer'}
                for row in data.get('data', []) if row.get('title') and row.get('artist', {}).get('name')]
@@ -205,6 +205,18 @@ class Handler(SimpleHTTPRequestHandler):
                         raise ValueError('Le lien doit commencer par https:// ou http://.')
                     db.execute('INSERT INTO albums(member_id, week, title, artist, link, cover_url, spotify_url, deezer_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                                (member, week, title, artist, link, cover_url, spotify_url, deezer_url))
+                elif self.path == '/api/album/delete':
+                    album_id = data.get('album_id')
+                    if type(album_id) is not int:
+                        raise ValueError('Album invalide.')
+                    db.execute('BEGIN IMMEDIATE')
+                    album = db.execute('SELECT member_id FROM albums WHERE id=?', (album_id,)).fetchone()
+                    if not album:
+                        return self.reply({'error': 'Cet album a déjà été supprimé.'}, 404)
+                    if album['member_id'] != member:
+                        return self.reply({'error': 'Tu peux seulement supprimer tes propres propositions.'}, 403)
+                    db.execute('DELETE FROM ratings WHERE album_id=?', (album_id,))
+                    db.execute('DELETE FROM albums WHERE id=?', (album_id,))
                 elif self.path == '/api/rating':
                     score, album_id = data.get('score'), data.get('album_id')
                     if type(score) is not int or not 0 <= score <= 10 or type(album_id) is not int:
