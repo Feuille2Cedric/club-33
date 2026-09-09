@@ -13,6 +13,15 @@ const assert=require('node:assert/strict');
   browser=await chromium.launch({channel:process.env.CI?'chrome':undefined});const page=await browser.newPage({viewport:{width:1440,height:1080}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   mkdirSync('test-artifacts',{recursive:true});
   await page.goto('http://127.0.0.1:3334');await page.getByRole('button',{name:'Cédric',exact:true}).waitFor();await page.screenshot({path:'test-artifacts/welcome.png',fullPage:true,animations:'disabled'});await page.getByRole('button',{name:'Cédric',exact:true}).click();
+  const normalizedRequest=await page.evaluate(async()=>{
+   const previousConfig=window.CLUB33_CONFIG,previousFetch=window.fetch;let calledUrl;
+   try{
+    window.CLUB33_CONFIG={supabaseUrl:'https://example.supabase.co/rest/v1/',supabaseKey:'sb_publishable_test'};
+    window.fetch=async url=>{calledUrl=url;return new Response('{}',{headers:{'Content-Type':'application/json'}});};
+    await clubApi('/api/week?week=2026-09-07');return calledUrl;
+   }finally{window.CLUB33_CONFIG=previousConfig;window.fetch=previousFetch;}
+  });
+  assert.equal(normalizedRequest,'https://example.supabase.co/rest/v1/rpc/club_week');
   await page.getByRole('button',{name:'Ajouter une personne',exact:true}).click();await page.locator('#member-form input').fill('Test Browser');await page.locator('#member-form .primary').click();await page.locator('#member-dialog').waitFor({state:'hidden'});
   await page.locator('#change-profile').click();await page.getByRole('button',{name:'Test Browser',exact:true}).click();
   await page.locator('#add').click();await page.locator('#album-search').fill('Radiohead In Rainbows');

@@ -13,7 +13,8 @@ async function clubApi(path, body, signal) {
     const headers={apikey:config.supabaseKey,'Content-Type':'application/json',Prefer:prefer};
     // Legacy anon JWTs require a Bearer header; publishable keys do not.
     if(config.supabaseKey.startsWith('eyJ'))headers.Authorization='Bearer '+config.supabaseKey;
-    const response=await fetch(config.supabaseUrl.replace(/\/$/,'')+'/rest/v1/'+endpoint,{method,headers,body:JSON.stringify(payload),signal});
+    const supabaseRoot=config.supabaseUrl.trim().replace(/\/+$/,'').replace(/\/rest\/v1$/,'');
+    const response=await fetch(supabaseRoot+'/rest/v1/'+endpoint,{method,headers,body:JSON.stringify(payload),signal});
     const text=await response.text();let data;try{data=text?JSON.parse(text):{};}catch{throw new Error('Réponse inattendue de Supabase.');}
     if(!response.ok){
       if(data.code==='23505')throw new Error(url.pathname==='/api/member'?'Ce prénom existe déjà.':'Tu as déjà proposé un album cette semaine.');

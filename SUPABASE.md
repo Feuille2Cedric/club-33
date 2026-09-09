@@ -24,6 +24,8 @@ Dans **Connect** ou **Settings → API Keys**, copier :
 - **Project URL**, de la forme `https://xxxxxxxx.supabase.co` (également disponible dans **Settings → Data API**).
 - **Publishable key**, de la forme `sb_publishable_...`. Une ancienne clé **anon** convient aussi.
 
+Si tu copies l’URL de l’API terminée par `/rest/v1`, le déploiement la normalise automatiquement pour éviter de doubler ce chemin.
+
 Ne pas copier la clé `sb_secret_...`, la clé `service_role`, le mot de passe de base de données ou la chaîne de connexion PostgreSQL. Le workflow refuse les clés d’administration reconnues.
 
 ## 4. Renseigner GitHub
