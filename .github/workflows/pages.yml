@@ -1,0 +1,62 @@
+name: Deploy GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: local-test-only
+          POSTGRES_DB: club_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test backend
+        run: python -m unittest -v
+      - name: Check JavaScript
+        run: |
+          node --check static/app.js
+          node --check static/data.js
+      - name: Test Supabase SQL permissions and operations
+        env:
+          PGPASSWORD: local-test-only
+        run: |
+          psql -h localhost -U postgres -d club_test -v ON_ERROR_STOP=1 -c 'CREATE ROLE anon; CREATE ROLE authenticated;'
+          psql -h localhost -U postgres -d club_test -v ON_ERROR_STOP=1 -f supabase/schema.sql
+          psql -h localhost -U postgres -d club_test -v ON_ERROR_STOP=1 -f supabase/test.sql
+      - name: Test browser and live Deezer search
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+          node scripts/browser-test.cjs
+      - name: Generate public configuration
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: python scripts/configure_pages.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: static
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
