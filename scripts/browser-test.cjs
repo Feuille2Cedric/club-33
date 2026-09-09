@@ -10,7 +10,7 @@ const assert=require('node:assert/strict');
  let browser;
  try{
   for(let i=0;i<40;i++){try{if((await fetch('http://127.0.0.1:3334/api/health')).ok)break;}catch{}await new Promise(r=>setTimeout(r,250));}
-  browser=await chromium.launch();const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  browser=await chromium.launch({channel:process.env.CI?'chrome':undefined});const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:3334');await page.getByRole('button',{name:'Cédric',exact:true}).click();
   await page.getByRole('button',{name:'＋ Une personne',exact:true}).click();await page.locator('#member-form input').fill('Test Browser');await page.locator('#member-form .primary').click();await page.locator('#member-dialog').waitFor({state:'hidden'});
   await page.locator('#change-profile').click();await page.getByRole('button',{name:'Test Browser',exact:true}).click();

@@ -46,7 +46,6 @@ jobs:
       - name: Test browser and live Deezer search
         run: |
           npm install --no-save --package-lock=false playwright
-          npx playwright install --with-deps chromium
           node scripts/browser-test.cjs
       - name: Generate public configuration
         env:
