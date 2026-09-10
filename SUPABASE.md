@@ -54,6 +54,10 @@ Le bouton « Retirer » apparaît sur les albums du profil sélectionné. Une co
 
 Les notes sont enregistrées séparément pour chaque couple album/personne. Changer la note de Cédric ne remplace jamais celle de Côme ou Issa. Le profil choisi est conservé dans l’onglet pour naviguer entre la sélection et `history.html` ; il peut être changé depuis l’en-tête.
 
+## Mise a jour : classement des propositions
+
+Si les tables existaient deja avant cette version, ouvrir **SQL Editor** et executer [la migration de classement](supabase/migrations/20260910_leaderboard.sql). Elle met a jour la fonction de lecture pour renvoyer, pour chaque personne, le nombre d'albums proposes, le nombre de notes recues et la moyenne des notes recues sur ses albums. Une installation neuve avec le dernier `schema.sql` inclut deja ce classement.
+
 ## Ce qui est volontairement ouvert pour le moment
 
 Il n’y a pas encore d’authentification, comme demandé : toute personne ayant accès au site peut choisir un profil, ajouter une personne ou un album et modifier la note de ce profil. Les suppressions directes de tables sont interdites ; seule la fonction dédiée peut retirer une proposition du profil transmis. Cette version ne protège pas les profils contre l’usurpation ; il faudra ajouter Supabase Auth avant d’exiger des mots de passe.

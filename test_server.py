@@ -55,6 +55,9 @@ class ClubTests(unittest.TestCase):
         self.assertEqual(current['history'], [
             dict(week='2026-09-07', album_count=2, rating_count=3, average=6.0),
             dict(week='2026-08-31', album_count=1, rating_count=0, average=None)])
+        self.assertEqual(current['leaderboard'][0],
+                         dict(member_id=1, name='Cédric', album_count=2, rating_count=3, average=6.0))
+        self.assertEqual(current['leaderboard'][-1]['average'], None)
         self.assertEqual(len(self.call('/api/week?week=2026-08-31')[1]['albums']), 1)
         self.assertEqual(self.call('/api/album', dict(album, member_id=3, cover_url='javascript:bad'))[0], 400)
 

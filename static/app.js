@@ -3,7 +3,7 @@ const historyPage = document.body.dataset.page === 'history';
 const colors = ['#e4e8d7', '#f1dcd0', '#dce4ec', '#e6dded', '#f0e7ce'];
 let member = null;
 try { member = Number(sessionStorage.getItem('club33-profile')) || null; } catch {}
-let state = { members: [], albums: [], history: [] };
+let state = { members: [], albums: [], history: [], leaderboard: [] };
 let requestId = 0, toastTimer, searchTimer, searchController, searchVersion = 0;
 let searchResults = [], deleteTarget = null, historyLimit = 12, previewsLoading = false;
 const previews = new Map();
@@ -67,6 +67,22 @@ function renderAlbum(album, index) {
     <div class="rating-footer"><span class="average-label"><b>${average}</b><small>/10</small> · moyenne du club</span>${own ? `<button class="delete-album" data-delete="${album.id}" aria-label="Supprimer ma proposition ${esc(album.title)}">${trashIcon} Retirer</button>` : `<span class="rating-count">${album.ratings.length} note${album.ratings.length > 1 ? 's' : ''}</span>`}</div></article>`;
 }
 
+function renderLeaderboard() {
+  const rows = (state.leaderboard || []).map((entry, index) => {
+    const person = state.members.find(m => m.id === entry.member_id) || entry;
+    const average = entry.average === null ? '—' : Number(entry.average).toLocaleString('fr-FR', {maximumFractionDigits:1});
+    const notes = Number(entry.rating_count);
+    const albums = Number(entry.album_count);
+    return `<div class="leaderboard-row ${person.id === member ? 'mine' : ''}" style="--tint:${tint(person.id)}">
+      <span class="rank">${index + 1}</span>${avatar(person)}
+      <span class="leader-name">${esc(person.name)}</span>
+      <span class="leader-meta">${albums} album${albums > 1 ? 's' : ''} · ${notes} note${notes > 1 ? 's' : ''} reçue${notes > 1 ? 's' : ''}</span>
+      <strong>${average}<small>/10</small></strong>
+    </div>`;
+  }).join('');
+  $('#leaderboard').innerHTML = `<div class="leaderboard-heading"><div><span class="eyebrow"><i></i> CLASSEMENT</span><h2>Qui propose les meilleurs albums ?</h2></div><p>Moyenne des notes reçues sur tous les albums envoyés.</p></div><div class="leaderboard-list">${rows || '<p class="leaderboard-empty">Le classement apparaîtra dès les premières notes.</p>'}</div>`;
+}
+
 function render() {
   const me = state.members.find(m => m.id === member);
   if (member && !me) { member = null; storeProfile(); }
@@ -76,6 +92,7 @@ function render() {
   $('#change-profile').innerHTML = me ? `${avatar(me)}${esc(me.name)}<span>⌄</span>` : '';
   $('#change-profile').setAttribute('aria-label', 'Changer de profil');
   $('#week-view').hidden = historyPage; $('#history-view').hidden = !historyPage;
+  renderLeaderboard();
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === (historyPage ? 'history' : 'week')) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   $('#week-title').innerHTML = (key(week) === key(monday()) ? 'Cette semaine' : 'Une semaine à réécouter') + '<span>.</span>';
   $('#week-dates').textContent = weekLabel(key(week));

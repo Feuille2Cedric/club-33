@@ -162,7 +162,16 @@ class Handler(SimpleHTTPRequestHandler):
                     FROM albums a LEFT JOIN ratings r ON r.album_id=a.id
                     GROUP BY a.week ORDER BY a.week DESC
                 ''')]
-            self.reply({'members': members, 'albums': albums, 'history': history})
+                leaderboard = [dict(row) for row in db.execute('''
+                    SELECT m.id AS member_id, m.name, COUNT(DISTINCT a.id) AS album_count,
+                           COUNT(r.score) AS rating_count, ROUND(AVG(r.score), 1) AS average
+                    FROM members m
+                    LEFT JOIN albums a ON a.member_id=m.id
+                    LEFT JOIN ratings r ON r.album_id=a.id
+                    GROUP BY m.id, m.name
+                    ORDER BY average IS NULL, average DESC, rating_count DESC, album_count DESC, m.name COLLATE NOCASE
+                ''')]
+            self.reply({'members': members, 'albums': albums, 'history': history, 'leaderboard': leaderboard})
         except (ValueError, TypeError):
             self.reply({'error': 'Semaine invalide.'}, 400)
 

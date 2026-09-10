@@ -10,6 +10,8 @@ do $$ declare payload jsonb; begin
  if jsonb_array_length(payload->'members')<>4 then raise exception 'Member addition failed'; end if;
  if (payload->'albums'->0->'ratings'->0->>'score')::int<>9 then raise exception 'Rating update failed'; end if;
  if (payload->'history'->0->>'average')::numeric<>9 then raise exception 'History average failed'; end if;
+ if (payload->'leaderboard'->0->>'name')<>'Test participant' then raise exception 'Leaderboard order failed'; end if;
+ if (payload->'leaderboard'->0->>'average')::numeric<>9 then raise exception 'Leaderboard average failed'; end if;
  begin
   delete from public.club_albums;
   raise exception 'Delete should be forbidden';

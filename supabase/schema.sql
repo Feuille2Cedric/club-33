@@ -60,7 +60,14 @@ language sql stable security invoker set search_path = '' as $$
  'history',(select coalesce(jsonb_agg(to_jsonb(h) order by h.week desc),'[]'::jsonb) from (
    select a.week,count(distinct a.id) as album_count,count(r.score) as rating_count,round(avg(r.score),1) as average
    from public.club_albums a left join public.club_ratings r on r.album_id=a.id group by a.week
- ) h));
+ ) h),
+ 'leaderboard',(select coalesce(jsonb_agg(to_jsonb(l) order by l.average is null,l.average desc,l.rating_count desc,l.album_count desc,l.name),'[]'::jsonb) from (
+   select m.id as member_id,m.name,count(distinct a.id) as album_count,count(r.score) as rating_count,round(avg(r.score),1) as average
+   from public.club_members m
+   left join public.club_albums a on a.member_id=m.id
+   left join public.club_ratings r on r.album_id=a.id
+   group by m.id,m.name
+ ) l));
 $$;
 revoke all on function public.club_week(date) from public;
 grant execute on function public.club_week(date) to anon,authenticated;
