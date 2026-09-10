@@ -7,7 +7,7 @@ async function clubApi(path, body, signal) {
     if(url.pathname==='/api/week'){endpoint='rpc/club_week';payload={selected_week:url.searchParams.get('week')};}
     else if(url.pathname==='/api/member'){endpoint='club_members';payload={name:body.name.trim()};}
     else if(url.pathname==='/api/album'){endpoint='club_albums';}
-    else if(url.pathname==='/api/rating'){endpoint='rpc/club_rate';payload={selected_album:body.album_id,selected_member:body.member_id,new_score:body.score};}
+    else if(url.pathname==='/api/rating'){endpoint='rpc/club_rate';payload={selected_album:body.album_id,selected_member:body.member_id,new_score:body.score,new_review:body.review||''};}
     else if(url.pathname==='/api/album/delete'){endpoint='rpc/club_delete_album';payload={selected_album:body.album_id,selected_member:body.member_id};}
     else throw new Error('Action inconnue.');
     const headers={apikey:config.supabaseKey,'Content-Type':'application/json',Prefer:prefer};

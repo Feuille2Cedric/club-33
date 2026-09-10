@@ -82,12 +82,15 @@ def initialize():
                 album_id INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
                 member_id INTEGER NOT NULL REFERENCES members(id),
                 score INTEGER NOT NULL CHECK(score BETWEEN 0 AND 10),
+                review TEXT NOT NULL DEFAULT '',
                 PRIMARY KEY(album_id, member_id));
         ''')
         db.executemany('INSERT INTO members VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET name=excluded.name',
                        [(1, 'Cédric'), (2, 'Côme'), (3, 'Issa')])
         if 'cover_url' not in [row['name'] for row in db.execute('PRAGMA table_info(albums)')]:
             db.execute("ALTER TABLE albums ADD COLUMN cover_url TEXT NOT NULL DEFAULT ''")
+        if 'review' not in [row['name'] for row in db.execute('PRAGMA table_info(ratings)')]:
+            db.execute("ALTER TABLE ratings ADD COLUMN review TEXT NOT NULL DEFAULT ''")
         for column in ('spotify_url', 'deezer_url'):
             if column not in [row['name'] for row in db.execute('PRAGMA table_info(albums)')]:
                 db.execute("ALTER TABLE albums ADD COLUMN " + column + " TEXT NOT NULL DEFAULT ''")
@@ -155,7 +158,7 @@ class Handler(SimpleHTTPRequestHandler):
                 albums = [dict(row) for row in db.execute('SELECT * FROM albums WHERE week=? ORDER BY member_id', (week,))]
                 for album in albums:
                     album['ratings'] = [dict(row) for row in db.execute(
-                        'SELECT member_id, score FROM ratings WHERE album_id=?', (album['id'],))]
+                        'SELECT member_id, score, review FROM ratings WHERE album_id=?', (album['id'],))]
                 history = [dict(row) for row in db.execute('''
                     SELECT a.week, COUNT(DISTINCT a.id) AS album_count,
                            COUNT(r.score) AS rating_count, ROUND(AVG(r.score), 1) AS average
@@ -228,12 +231,13 @@ class Handler(SimpleHTTPRequestHandler):
                     db.execute('DELETE FROM albums WHERE id=?', (album_id,))
                 elif self.path == '/api/rating':
                     score, album_id = data.get('score'), data.get('album_id')
+                    review = field(data, 'review', 600)
                     if type(score) is not int or not 0 <= score <= 10 or type(album_id) is not int:
                         raise ValueError('La note doit être un entier entre 0 et 10.')
                     if not db.execute('SELECT id FROM albums WHERE id=?', (album_id,)).fetchone():
                         raise ValueError('Album introuvable.')
-                    db.execute('INSERT INTO ratings VALUES (?, ?, ?) ON CONFLICT(album_id, member_id) DO UPDATE SET score=excluded.score',
-                               (album_id, member, score))
+                    db.execute('INSERT INTO ratings(album_id, member_id, score, review) VALUES (?, ?, ?, ?) ON CONFLICT(album_id, member_id) DO UPDATE SET score=excluded.score, review=excluded.review',
+                               (album_id, member, score, review))
                 else:
                     return self.reply({'error': 'Route inconnue.'}, 404)
             self.reply({'ok': True})

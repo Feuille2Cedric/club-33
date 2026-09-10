@@ -52,6 +52,7 @@ function renderAlbum(album, index) {
   const mine = album.ratings.find(r => r.member_id === member);
   const me = state.members.find(m => m.id === member);
   const average = album.ratings.length ? (album.ratings.reduce((sum,r) => sum + r.score, 0) / album.ratings.length).toLocaleString('fr-FR',{maximumFractionDigits:1}) : '—';
+  const myReview = mine?.review || '';
   const query = encodeURIComponent(album.artist + ' ' + album.title);
   const spotify = album.spotify_url || 'https://open.spotify.com/search/' + query;
   const directDeezer = album.deezer_url || (album.link?.startsWith('https://www.deezer.com/') ? album.link : '');
@@ -63,6 +64,9 @@ function renderAlbum(album, index) {
     <div class="platforms"><a class="spotify-link" href="${esc(spotify)}" target="_blank" rel="noopener noreferrer" aria-label="${album.spotify_url ? 'Écouter' : 'Rechercher'} ${esc(album.title)} sur Spotify">${spotifyIcon}${album.spotify_url ? 'Spotify' : 'Spotify · rechercher'} ↗</a><a class="deezer-link" href="${esc(deezer)}" target="_blank" rel="noopener noreferrer" aria-label="${directDeezer ? 'Écouter' : 'Rechercher'} ${esc(album.title)} sur Deezer">${deezerIcon}${directDeezer ? 'Deezer' : 'Deezer · rechercher'} ↗</a></div>
     <div class="rating"><div class="rating-heading"><span>Ta note · ${esc(me?.name || '')}</span><span class="personal-score">${mine ? `${mine.score} / 10` : 'À toi d’écouter'}</span></div>
     <div class="scores" role="group" aria-label="Note de ${esc(me?.name || '')} pour ${esc(album.title)}">${Array.from({length:11},(_,n) => `<button data-album="${album.id}" data-score="${n}" class="${mine?.score === n ? 'selected' : ''}" aria-pressed="${mine?.score === n}" aria-label="${n} sur 10">${n}</button>`).join('')}</div>
+    <label class="review-box">Ta review<textarea data-review="${album.id}" maxlength="600" rows="3" placeholder="Ton avis sur l’album...">${esc(myReview)}</textarea></label>
+    <button class="save-review" data-save-rating="${album.id}" ${mine ? '' : 'disabled'}>${mine ? 'Enregistrer review' : 'Choisis une note d’abord'}</button>
+    <div class="reviews" aria-label="Reviews individuelles">${album.ratings.filter(r => r.review).map(r => { const voter = state.members.find(m => m.id === r.member_id); return `<blockquote class="review-chip ${r.member_id === member ? 'mine' : ''}"><strong>${esc(voter?.name || '')} · ${r.score}/10</strong><p>${esc(r.review)}</p></blockquote>`; }).join('')}</div>
     <div class="votes" aria-label="Notes individuelles">${state.members.map(m => { const rating = album.ratings.find(r => r.member_id === m.id); return `<span class="vote-chip ${m.id === member ? 'mine' : ''}" data-voter="${m.id}">${esc(m.name)} <b>${rating ? rating.score : '—'}</b></span>`; }).join('')}</div></div></div>
     <div class="rating-footer"><span class="average-label"><b>${average}</b><small>/10</small> · moyenne du club</span>${own ? `<button class="delete-album" data-delete="${album.id}" aria-label="Supprimer ma proposition ${esc(album.title)}">${trashIcon} Retirer</button>` : `<span class="rating-count">${album.ratings.length} note${album.ratings.length > 1 ? 's' : ''}</span>`}</div></article>`;
 }
@@ -174,10 +178,23 @@ $('#albums').onclick = async e => {
     $('#delete-description').textContent = `${album.title} — ${album.artist}`;
     $('#delete-form .form-error').textContent = ''; $('#delete-dialog').showModal(); return;
   }
+  const saveReview = e.target.closest('[data-save-rating]');
+  if (saveReview && member !== null) {
+    const albumId = Number(saveReview.dataset.saveRating);
+    const album = state.albums.find(a => a.id === albumId);
+    const mine = album?.ratings.find(r => r.member_id === member);
+    if (!mine) return;
+    const review = document.querySelector(`[data-review="${albumId}"]`)?.value || '';
+    saveReview.disabled = true;
+    try { await clubApi('/api/rating',{member_id:member,album_id:albumId,score:mine.score,review}); await refresh(true); toast('Review enregistrée.'); }
+    catch (error) { toast(error.message); } finally { saveReview.disabled = false; }
+    return;
+  }
   const button = e.target.closest('[data-score]'); if (!button || member === null) return;
   const voter = member, albumId = Number(button.dataset.album), score = Number(button.dataset.score);
+  const review = document.querySelector(`[data-review="${albumId}"]`)?.value || '';
   const buttons = button.closest('.scores').querySelectorAll('button'); buttons.forEach(b => b.disabled = true);
-  try { await clubApi('/api/rating',{member_id:voter,album_id:albumId,score}); await refresh(true); }
+  try { await clubApi('/api/rating',{member_id:voter,album_id:albumId,score,review}); await refresh(true); }
   catch (error) { toast(error.message); } finally { buttons.forEach(b => b.disabled = false); }
 };
 $('#delete-form').onsubmit = async e => {
