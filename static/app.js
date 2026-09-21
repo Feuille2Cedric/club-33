@@ -135,38 +135,56 @@ function renderHistory() {
 function albumAverage(album) {
   return album.ratings.length ? album.ratings.reduce((sum,r) => sum + r.score, 0) / album.ratings.length : null;
 }
+function coverWeekMatches(h, query) {
+  if (!query) return true;
+  const albums = previews.get(h.week)?.albums || [];
+  const haystack = [h.week, weekLabel(h.week), ...albums.flatMap(a => {
+    const author = state.members.find(m => m.id === a.member_id);
+    return [a.title, a.artist, author?.name || ''];
+  })].join(' ').toLocaleLowerCase('fr-FR');
+  return haystack.includes(query);
+}
 function filteredCoverWeeks() {
   const query = $('#covers-filter')?.value.toLocaleLowerCase('fr-FR').trim() || '';
-  if (!query) return state.history;
-  return state.history.filter(h => {
-    const albums = previews.get(h.week)?.albums || [];
-    const haystack = [h.week, weekLabel(h.week), ...albums.flatMap(a => [a.title, a.artist])].join(' ').toLocaleLowerCase('fr-FR');
+  return state.history.filter(h => coverWeekMatches(h, query));
+}
+function coverEntries() {
+  const query = $('#covers-filter')?.value.toLocaleLowerCase('fr-FR').trim() || '';
+  return filteredCoverWeeks().slice(0,coversLimit).flatMap(h => (previews.get(h.week)?.albums || []).map(album => ({album, week:h.week}))).filter(({album, week}) => {
+    if (!query) return true;
+    const author = state.members.find(m => m.id === album.member_id);
+    const haystack = [week, weekLabel(week), album.title, album.artist, author?.name || ''].join(' ').toLocaleLowerCase('fr-FR');
     return haystack.includes(query);
   });
 }
-function coverTile(album) {
+function coverTile(entry) {
+  const album = entry.album || entry;
+  const weekValue = entry.week;
   const average = albumAverage(album);
   const locked = average === null;
-  const author = state.members.find(m => m.id === album.member_id);
-  return `<article class="cover-tile ${locked ? 'locked' : 'listened'}" title="${esc(album.title)} — ${esc(album.artist)}">
-    <div class="cover-frame">${coverImage(album)}${locked ? '<span class="lock-badge" aria-label="Pas encore écouté">🔒</span>' : `<span class="score-badge">${average.toLocaleString('fr-FR',{maximumFractionDigits:1})}</span>`}</div>
-    <div class="cover-caption"><strong>${esc(album.title)}</strong><span>${esc(album.artist)}</span><small>${author ? esc(author.name) : ''} · ${locked ? 'pas encore noté' : `${album.ratings.length} note${album.ratings.length > 1 ? 's' : ''}`}</small></div>
+  return `<article class="cover-tile ${locked ? 'locked' : 'listened'}" title="${esc(album.title)} - ${esc(album.artist)}">
+    <a class="cover-frame" href="./index.html?week=${esc(weekValue || key(week))}" aria-label="Voir ${esc(album.title)} pendant la semaine du ${esc(weekValue ? dateLabel(weekValue) : dateLabel(key(week)))}">${coverImage(album)}${locked ? '<span class="lock-badge" aria-label="Pas encore note">🔒</span>' : `<span class="score-badge">${average.toLocaleString('fr-FR',{maximumFractionDigits:1})}</span>`}</a>
+    <div class="cover-caption"><strong>${esc(album.title)}</strong><span>${esc(album.artist)}</span><small>${weekValue ? dateLabel(weekValue) + ' · ' : ''}${locked ? 'pas encore note' : `${album.ratings.length} note${album.ratings.length > 1 ? 's' : ''}`}</small></div>
   </article>`;
 }
 function renderCovers() {
   const totalAlbums = state.history.reduce((sum,h) => sum + Number(h.album_count), 0);
-  const totalRatings = state.history.reduce((sum,h) => sum + Number(h.rating_count), 0);
-  const loadedAlbums = [...previews.values()].flatMap(item => item.albums || []);
-  const lockedCount = loadedAlbums.filter(album => !album.ratings.length).length;
-  $('#covers-stats').innerHTML = `<div class="stat"><b>${state.history.length}</b><span>semaines</span></div><div class="stat"><b>${totalAlbums}</b><span>pochettes</span></div><div class="stat"><b>${lockedCount}</b><span>verrouillées visibles</span></div>`;
-  const weeks = filteredCoverWeeks();
-  $('#covers-wall').innerHTML = weeks.slice(0,coversLimit).map((h,i) => {
-    const albums = previews.get(h.week)?.albums || [];
-    const average = h.average === null ? 'Pas encore notée' : Number(h.average).toLocaleString('fr-FR') + '/10';
-    const body = albums.length ? albums.map(coverTile).join('') : '<div class="covers-loading">Chargement des pochettes…</div>';
-    return `<section class="cover-week" style="--tint:${colors[i%colors.length]}"><div class="cover-week-head"><div><span class="eyebrow"><i></i> SEMAINE</span><h2>${dateLabel(h.week)}</h2></div><p>${h.album_count} album${Number(h.album_count) > 1 ? 's' : ''} · ${average}</p></div><div class="cover-grid">${body}</div></section>`;
-  }).join('') || `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${state.history.length ? 'Aucune pochette ne correspond à cette recherche.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour à cette semaine ↗</a></div>`;
-  $('#more-covers').hidden = weeks.length <= coversLimit;
+  const loadedEntries = coverEntries();
+  const lockedCount = loadedEntries.filter(({album}) => !album.ratings.length).length;
+  const activeMembers = state.members.filter(m => loadedEntries.some(({album}) => album.member_id === m.id));
+  $('#covers-stats').innerHTML = `<div class="stat"><b>${state.members.length}</b><span>personnes</span></div><div class="stat"><b>${totalAlbums}</b><span>pochettes</span></div><div class="stat"><b>${lockedCount}</b><span>verrouillees visibles</span></div>`;
+  const loading = filteredCoverWeeks().slice(0,coversLimit).some(h => !previews.has(h.week));
+  const sections = state.members.map(person => {
+    const entries = loadedEntries.filter(({album}) => album.member_id === person.id);
+    if (!entries.length && activeMembers.length) return '';
+    const rated = entries.filter(({album}) => album.ratings.length);
+    const receivedScores = entries.flatMap(({album}) => album.ratings.map(r => r.score));
+    const personAverage = receivedScores.length ? (receivedScores.reduce((sum,score) => sum + score, 0) / receivedScores.length).toLocaleString('fr-FR',{maximumFractionDigits:1}) + '/10' : 'Pas encore note';
+    const body = entries.length ? entries.map(coverTile).join('') : '<div class="covers-loading">Aucune pochette pour cette personne sur les semaines chargees.</div>';
+    return `<section class="cover-week cover-person" style="--tint:${tint(person.id)}"><div class="cover-week-head"><div><span class="eyebrow"><i></i> ${esc(person.name).toUpperCase()}</span><h2>${esc(person.name)}</h2></div><p>${entries.length} album${entries.length > 1 ? 's' : ''} · ${rated.length} ecoute${rated.length > 1 ? 's' : ''} · ${personAverage}</p></div><div class="cover-grid">${body}</div></section>`;
+  }).join('');
+  $('#covers-wall').innerHTML = sections || (loading ? '<div class="covers-loading">Chargement des pochettes...</div>' : `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${state.history.length ? 'Aucune pochette ne correspond a cette recherche.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour a cette semaine ↗</a></div>`);
+  $('#more-covers').hidden = filteredCoverWeeks().length <= coversLimit;
 }
 async function loadCoverWeeks() {
   if (previewsLoading || !coversPage || !member) return;
