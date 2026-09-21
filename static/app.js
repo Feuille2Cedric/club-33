@@ -135,10 +135,15 @@ function renderHistory() {
 function albumAverage(album) {
   return album.ratings.length ? album.ratings.reduce((sum,r) => sum + r.score, 0) / album.ratings.length : null;
 }
+function coverWeeks() {
+  const currentWeek = key(monday());
+  return state.history.filter(h => h.week <= currentWeek);
+}
 function filteredCoverWeeks() {
   const query = $('#covers-filter')?.value.toLocaleLowerCase('fr-FR').trim() || '';
-  if (!query) return state.history;
-  return state.history.filter(h => {
+  const weeks = coverWeeks();
+  if (!query) return weeks;
+  return weeks.filter(h => {
     const albums = previews.get(h.week)?.albums || [];
     const haystack = [h.week, weekLabel(h.week), ...albums.flatMap(a => [a.title, a.artist])].join(' ').toLocaleLowerCase('fr-FR');
     return haystack.includes(query);
@@ -156,19 +161,20 @@ function coverTile(album) {
   </article>`;
 }
 function renderCovers() {
-  const totalAlbums = state.history.reduce((sum,h) => sum + Number(h.album_count), 0);
+  const visibleWeeks = coverWeeks();
+  const totalAlbums = visibleWeeks.reduce((sum,h) => sum + Number(h.album_count), 0);
   const loadedAlbums = [...previews.values()].flatMap(item => item.albums || []);
   const listenedCount = loadedAlbums.filter(album => album.ratings.some(r => r.member_id === member)).length;
   const lockedCount = loadedAlbums.filter(album => !album.ratings.some(r => r.member_id === member)).length;
   const me = state.members.find(m => m.id === member);
-  $('#covers-stats').innerHTML = `<div class="stat"><b>${state.history.length}</b><span>semaines</span></div><div class="stat"><b>${totalAlbums}</b><span>pochettes</span></div><div class="stat"><b>${listenedCount}</b><span>ecoutees par ${esc(me?.name || 'toi')}</span></div>`;
+  $('#covers-stats').innerHTML = `<div class="stat"><b>${visibleWeeks.length}</b><span>semaines</span></div><div class="stat"><b>${totalAlbums}</b><span>pochettes</span></div><div class="stat"><b>${listenedCount}</b><span>ecoutees par ${esc(me?.name || 'toi')}</span></div>`;
   const weeks = filteredCoverWeeks();
   $('#covers-wall').innerHTML = weeks.slice(0,coversLimit).map((h,i) => {
     const albums = previews.get(h.week)?.albums || [];
     const mine = albums.filter(album => album.ratings.some(r => r.member_id === member)).length;
     const body = albums.length ? albums.map(coverTile).join('') : '<div class="covers-loading">Chargement des pochettes...</div>';
     return `<section class="cover-week" style="--tint:${colors[i%colors.length]}"><div class="cover-week-head"><div><span class="eyebrow"><i></i> SEMAINE</span><h2>${dateLabel(h.week)}</h2></div><p>${h.album_count} album${Number(h.album_count) > 1 ? 's' : ''} · ${mine}/${albums.length || h.album_count} ecoute${mine > 1 ? 's' : ''} par ${esc(me?.name || 'toi')}</p></div><div class="cover-grid">${body}</div></section>`;
-  }).join('') || `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${state.history.length ? 'Aucune pochette ne correspond a cette recherche.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour a cette semaine ↗</a></div>`;
+  }).join('') || `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${visibleWeeks.length ? 'Aucune pochette ne correspond a cette recherche.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour a cette semaine ↗</a></div>`;
   $('#more-covers').hidden = weeks.length <= coversLimit;
 }
 async function loadCoverWeeks() {
