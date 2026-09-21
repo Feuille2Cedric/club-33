@@ -40,6 +40,8 @@ De nouvelles personnes peuvent être ajoutées directement depuis l'interface.
 - Moyenne globale par album.
 - Suppression de sa propre proposition.
 - Historique propre des semaines passées.
+- Vue globale des pochettes par semaine.
+- Albums sans note grisés avec cadenas.
 - Classement des membres selon la moyenne reçue sur leurs albums proposés.
 - Déploiement gratuit avec GitHub Pages.
 - Base partagée gratuite avec Supabase.
@@ -172,6 +174,7 @@ club-33/
 ├── static/                  # app publiée sur GitHub Pages
 │   ├── index.html
 │   ├── history.html
+│   ├── covers.html
 │   ├── app.js
 │   ├── data.js
 │   ├── style.css
@@ -195,6 +198,7 @@ Club 33 est fonctionnel avec :
 - notes ;
 - reviews ;
 - historique ;
+- mur de pochettes ;
 - classement ;
 - suppression des propositions ;
 - déploiement GitHub Pages ;

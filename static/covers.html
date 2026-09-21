@@ -2,10 +2,10 @@
 <html lang="fr">
 <head>
  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f8f6f1">
- <title>Club 33 — L’écoute se partage</title><link rel="icon" type="image/svg+xml" href="./favicon.svg">
+ <title>Pochettes | Club 33 — Vue d'ensemble</title><link rel="icon" type="image/svg+xml" href="./favicon.svg">
  <link rel="stylesheet" href="./style.css"><script src="./config.js"></script><script src="./data.js"></script><script src="./app.js" defer></script>
 </head>
-<body data-page="week">
+<body data-page="covers">
  <header class="site-header"><div class="header-inner"><a href="./" class="logo" aria-label="Club 33, accueil"><img src="./favicon.svg" alt="" width="34" height="34">club<span>33</span><small>LE CLUB D’ÉCOUTE</small></a><nav aria-label="Navigation principale"><a href="./" data-nav="week">Cette semaine</a><a href="./history.html" data-nav="history">Historique <span>↗</span></a><a href="./covers.html" data-nav="covers">Pochettes <span>↗</span></a></nav><button id="change-profile" class="profile-switch" hidden></button></div></header>
  <main>
   <p id="connection" class="connection" role="status">On prépare les platines…</p>
@@ -24,6 +24,13 @@
    <section id="history-view" hidden>
     <div class="page-heading"><div><span class="eyebrow"><i></i> LES ARCHIVES</span><h1>La collection<br>du <em>club.</em></h1><p>Toutes les semaines, tous les disques. Rien ne se perd.</p></div><div class="archive-stamp" aria-hidden="true"><img src="./favicon.svg" alt=""><span>À RÉÉCOUTER<br>SANS MODÉRATION</span></div></div>
     <div id="history-stats" class="history-stats"></div><div class="archive-toolbar"><h2>Les sessions</h2><label class="history-filter"><span class="sr-only">Filtrer les semaines</span><input id="history-filter" type="search" placeholder="Rechercher une date…" aria-label="Rechercher une date"></label></div><div id="history" class="history-grid"></div><button id="more-history" class="secondary" hidden>Voir les semaines précédentes ↓</button>
+   </section>
+
+   <section id="covers-view" hidden>
+    <div class="page-heading"><div><span class="eyebrow"><i></i> VUE D’ENSEMBLE</span><h1>Le mur des<br><em>pochettes.</em></h1><p>Toutes les propositions par semaine. Les albums non notés restent verrouillés jusqu’à écoute.</p></div><div class="archive-stamp" aria-hidden="true"><img src="./favicon.svg" alt=""><span>TOUTES LES POCHETTES<br>TOUTES LES SEMAINES</span></div></div>
+    <div id="covers-stats" class="history-stats"></div>
+    <div class="archive-toolbar"><h2>Vue par semaine</h2><label class="history-filter"><span class="sr-only">Filtrer les pochettes</span><input id="covers-filter" type="search" placeholder="Rechercher une semaine, album, artiste…" aria-label="Rechercher une pochette"></label></div>
+    <div id="covers-wall" class="covers-wall"></div><button id="more-covers" class="secondary" hidden>Voir plus de semaines ↓</button>
    </section>
   </section>
  </main>

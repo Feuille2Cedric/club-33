@@ -1,11 +1,13 @@
 const $ = selector => document.querySelector(selector);
-const historyPage = document.body.dataset.page === 'history';
+const page = document.body.dataset.page || 'week';
+const historyPage = page === 'history';
+const coversPage = page === 'covers';
 const colors = ['#e4e8d7', '#f1dcd0', '#dce4ec', '#e6dded', '#f0e7ce'];
 let member = null;
 try { member = Number(sessionStorage.getItem('club33-profile')) || null; } catch {}
 let state = { members: [], albums: [], history: [], leaderboard: [] };
 let requestId = 0, toastTimer, searchTimer, searchController, searchVersion = 0;
-let searchResults = [], deleteTarget = null, historyLimit = 12, previewsLoading = false;
+let searchResults = [], deleteTarget = null, historyLimit = 12, coversLimit = 8, previewsLoading = false;
 const previews = new Map();
 const trashIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 10v7M14 10v7"/></svg>';
 const spotifyIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><g fill="none" stroke="white" stroke-width="1.7" stroke-linecap="round"><path d="M6 9c4-1.4 8-1 12 1M7 12c3-1 7-.6 10 1M8 15c2-.5 5-.2 8 1"/></g></svg>';
@@ -95,9 +97,9 @@ function render() {
   $('#change-profile').hidden = member === null;
   $('#change-profile').innerHTML = me ? `${avatar(me)}${esc(me.name)}<span>⌄</span>` : '';
   $('#change-profile').setAttribute('aria-label', 'Changer de profil');
-  $('#week-view').hidden = historyPage; $('#history-view').hidden = !historyPage;
+  $('#week-view').hidden = page !== 'week'; $('#history-view').hidden = !historyPage; if ($('#covers-view')) $('#covers-view').hidden = !coversPage;
   renderLeaderboard();
-  document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === (historyPage ? 'history' : 'week')) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === page) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
   $('#week-title').innerHTML = (key(week) === key(monday()) ? 'Cette semaine' : 'Une semaine à réécouter') + '<span>.</span>';
   $('#week-dates').textContent = weekLabel(key(week));
   $('#member-avatars').innerHTML = state.members.slice(0,5).map(m => avatar(m)).join('');
@@ -105,10 +107,11 @@ function render() {
   const hasProposal = state.albums.some(a => a.member_id === member);
   $('#add').disabled = hasProposal;
   $('#my-proposal-status').textContent = hasProposal ? 'Ton album est sur la platine.' : 'Un disque qui mérite d’être partagé.';
-  if (!historyPage) {
+  if (page === 'week') {
     $('#albums').innerHTML = state.albums.map(renderAlbum).join('');
     if (!hasProposal) $('#albums').insertAdjacentHTML('beforeend', `<div class="empty-card"><img src="./favicon.svg" alt=""><h2>Et toi, tu nous fais<br>écouter quoi ?</h2><p>Un coup de cœur, un classique ou une découverte. La prochaine piste est à toi.</p><button data-add-album>+ Proposer mon album</button></div>`);
-  } else { renderHistory(); loadPreviews(); }
+  } else if (historyPage) { renderHistory(); loadPreviews(); }
+  else if (coversPage) { renderCovers(); loadCoverWeeks(); }
 }
 
 function filteredHistory() {
@@ -127,6 +130,54 @@ function renderHistory() {
     return `<a class="history-item" href="./index.html?week=${h.week}"><div class="history-covers" style="--tint:${colors[i%colors.length]}">${covers}</div><div class="history-card-body"><span class="eyebrow">${status}</span><h3>Semaine du ${dateLabel(h.week)}</h3><p>${albums.length ? albums.map(a => esc(a.title)).join(' · ') : `${h.album_count} albums à retrouver`}</p><div class="history-meta"><span>${h.album_count} albums · <b>${h.average === null ? 'Pas encore notés' : Number(h.average).toLocaleString('fr-FR') + '/10'}</b></span><span>↗</span></div></div></a>`;
   }).join('') || `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${state.history.length ? 'Aucune semaine ne correspond à cette date.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour à cette semaine ↗</a></div>`;
   $('#more-history').hidden = list.length <= historyLimit;
+}
+
+function albumAverage(album) {
+  return album.ratings.length ? album.ratings.reduce((sum,r) => sum + r.score, 0) / album.ratings.length : null;
+}
+function filteredCoverWeeks() {
+  const query = $('#covers-filter')?.value.toLocaleLowerCase('fr-FR').trim() || '';
+  if (!query) return state.history;
+  return state.history.filter(h => {
+    const albums = previews.get(h.week)?.albums || [];
+    const haystack = [h.week, weekLabel(h.week), ...albums.flatMap(a => [a.title, a.artist])].join(' ').toLocaleLowerCase('fr-FR');
+    return haystack.includes(query);
+  });
+}
+function coverTile(album) {
+  const average = albumAverage(album);
+  const locked = average === null;
+  const author = state.members.find(m => m.id === album.member_id);
+  return `<article class="cover-tile ${locked ? 'locked' : 'listened'}" title="${esc(album.title)} — ${esc(album.artist)}">
+    <div class="cover-frame">${coverImage(album)}${locked ? '<span class="lock-badge" aria-label="Pas encore écouté">🔒</span>' : `<span class="score-badge">${average.toLocaleString('fr-FR',{maximumFractionDigits:1})}</span>`}</div>
+    <div class="cover-caption"><strong>${esc(album.title)}</strong><span>${esc(album.artist)}</span><small>${author ? esc(author.name) : ''} · ${locked ? 'pas encore noté' : `${album.ratings.length} note${album.ratings.length > 1 ? 's' : ''}`}</small></div>
+  </article>`;
+}
+function renderCovers() {
+  const totalAlbums = state.history.reduce((sum,h) => sum + Number(h.album_count), 0);
+  const totalRatings = state.history.reduce((sum,h) => sum + Number(h.rating_count), 0);
+  const loadedAlbums = [...previews.values()].flatMap(item => item.albums || []);
+  const lockedCount = loadedAlbums.filter(album => !album.ratings.length).length;
+  $('#covers-stats').innerHTML = `<div class="stat"><b>${state.history.length}</b><span>semaines</span></div><div class="stat"><b>${totalAlbums}</b><span>pochettes</span></div><div class="stat"><b>${lockedCount}</b><span>verrouillées visibles</span></div>`;
+  const weeks = filteredCoverWeeks();
+  $('#covers-wall').innerHTML = weeks.slice(0,coversLimit).map((h,i) => {
+    const albums = previews.get(h.week)?.albums || [];
+    const average = h.average === null ? 'Pas encore notée' : Number(h.average).toLocaleString('fr-FR') + '/10';
+    const body = albums.length ? albums.map(coverTile).join('') : '<div class="covers-loading">Chargement des pochettes…</div>';
+    return `<section class="cover-week" style="--tint:${colors[i%colors.length]}"><div class="cover-week-head"><div><span class="eyebrow"><i></i> SEMAINE</span><h2>${dateLabel(h.week)}</h2></div><p>${h.album_count} album${Number(h.album_count) > 1 ? 's' : ''} · ${average}</p></div><div class="cover-grid">${body}</div></section>`;
+  }).join('') || `<div class="empty-history"><img src="./favicon.svg" alt=""><p>${state.history.length ? 'Aucune pochette ne correspond à cette recherche.' : 'La collection commence avec votre premier album.'}</p><a href="./">Retour à cette semaine ↗</a></div>`;
+  $('#more-covers').hidden = weeks.length <= coversLimit;
+}
+async function loadCoverWeeks() {
+  if (previewsLoading || !coversPage || !member) return;
+  const needed = filteredCoverWeeks().slice(0,coversLimit).filter(h => !previews.has(h.week));
+  if (!needed.length) return;
+  previewsLoading = true;
+  for (let i=0; i<needed.length; i+=3) {
+    await Promise.all(needed.slice(i,i+3).map(async h => { try { const data = await clubApi('/api/week?week='+h.week); previews.set(h.week,{albums:data.albums}); } catch {} }));
+    renderCovers();
+  }
+  previewsLoading = false; renderCovers();
 }
 async function loadPreviews() {
   if (previewsLoading || !historyPage || !member) return;
@@ -157,8 +208,10 @@ function navigate(days) {
 }
 $('#previous').onclick = () => navigate(-7); $('#next').onclick = () => navigate(7);
 $('#today').onclick = () => { week = monday(); navigate(0); };
-$('#history-filter').oninput = () => { historyLimit = 12; renderHistory(); loadPreviews(); };
-$('#more-history').onclick = () => { historyLimit += 12; renderHistory(); loadPreviews(); };
+if ($('#history-filter')) $('#history-filter').oninput = () => { historyLimit = 12; renderHistory(); loadPreviews(); };
+if ($('#more-history')) $('#more-history').onclick = () => { historyLimit += 12; renderHistory(); loadPreviews(); };
+if ($('#covers-filter')) $('#covers-filter').oninput = () => { coversLimit = 8; renderCovers(); loadCoverWeeks(); };
+if ($('#more-covers')) $('#more-covers').onclick = () => { coversLimit += 8; renderCovers(); loadCoverWeeks(); };
 document.querySelectorAll('.add-person').forEach(b => b.onclick = () => { $('#member-form').reset(); $('#member-form .form-error').textContent = ''; $('#member-dialog').showModal(); });
 function openAlbumForm() { $('#album-form').reset(); $('#album-form .form-error').textContent = ''; $('#manual-fields').open = false; $('#album-dialog').showModal(); }
 $('#add').onclick = openAlbumForm;
